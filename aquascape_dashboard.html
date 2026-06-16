@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aquascape Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #eef6fb;
+  --card: #ffffff;
+  --border: #d8e8f2;
+  --border-soft: #e8f2f8;
+  --text: #0f1f2e;
+  --muted: #607080;
+  --muted2: #8fa0b0;
+  --accent: #0077cc;
+  --accent-light: #e0f0ff;
+  --tank1: #0077cc;
+  --tank2: #6c3bcd;
+  --success: #059669;
+  --success-bg: #ecfdf5;
+  --warning: #b45309;
+  --warning-bg: #fffbeb;
+  --danger: #c0392b;
+  --danger-bg: #fff0ee;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+}
+
+/* ── Header ── */
+.header {
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  padding: 14px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 1px 4px rgba(0,0,0,.05);
+}
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-icon { font-size: 22px; }
+.brand h1 { font-size: 17px; font-weight: 800; letter-spacing: -0.02em; }
+.brand .sub { font-size: 11px; color: var(--muted); font-weight: 500; }
+.header-right { display: flex; align-items: center; gap: 12px; }
+.today-date { font-size: 12px; color: var(--muted); font-weight: 600; }
+.tank-tabs { display: flex; background: var(--bg); border-radius: 10px; padding: 3px; gap: 2px; }
+.tank-tab { padding: 6px 18px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; border: none; background: transparent; color: var(--muted); transition: all .18s; }
+.tank-tab.active { color: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+.tank-tab[data-tank="1"].active { background: var(--tank1); }
+.tank-tab[data-tank="2"].active { background: var(--tank2); }
+
+/* ── Main ── */
+.main { padding: 20px 24px 32px; max-width: 1080px; margin: 0 auto; }
+
+/* ── Tank Bio ── */
+.tank-bio {
+  background: #fff; border: 1px solid var(--border); border-radius: 14px;
+  padding: 14px 18px; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+}
+.tank-bio-name { font-size: 15px; font-weight: 800; white-space: nowrap; }
+.tank-bio-name span { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 7px; vertical-align: middle; }
+.bio-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.bio-chip { padding: 3px 9px; background: var(--bg); border: 1px solid var(--border); border-radius: 20px; font-size: 11px; color: var(--muted); font-weight: 600; }
+
+/* ── Alerts ── */
+.alerts { display: flex; flex-direction: column; gap: 7px; margin-bottom: 16px; }
+.alert { padding: 9px 14px; border-radius: 9px; font-size: 12.5px; font-weight: 600; display: flex; align-items: center; gap: 7px; border: 1px solid; }
+.alert-danger  { background: var(--danger-bg);  color: var(--danger);  border-color: #fbb; }
+.alert-warning { background: var(--warning-bg); color: var(--warning); border-color: #fcd34d; }
+.alert-success { background: var(--success-bg); color: var(--success); border-color: #6ee7b7; }
+
+/* ── Parameter Cards ── */
+.params-section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: 8px; }
+.params-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 6px; }
+.params-grid-std { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+
+/* Strip-coded card */
+.param-card-strip {
+  border-radius: 12px; padding: 0; text-align: center;
+  position: relative; overflow: hidden;
+  transition: box-shadow .15s, transform .12s;
+  border: 1.5px solid transparent;
+  display: flex; flex-direction: column; min-height: 100px;
+}
+.param-card-strip:hover { box-shadow: 0 4px 16px rgba(0,0,0,.12); transform: translateY(-1px); }
+.strip-color-bg {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 12px 8px 8px; transition: background-color .35s ease;
+}
+.strip-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; opacity: .75; }
+.strip-value { font-size: 20px; font-weight: 900; line-height: 1; letter-spacing: -0.04em; }
+.strip-unit  { font-size: 10px; margin-top: 3px; font-weight: 600; opacity: .7; }
+.strip-range { font-size: 9px; margin-top: 2px; opacity: .6; }
+.strip-empty { font-size: 16px; font-weight: 700; opacity: .3; }
+.strip-scale-bar { height: 5px; width: 100%; display: flex; flex-shrink: 0; }
+.strip-scale-seg { flex: 1; }
+
+/* Standard card */
+.param-card {
+  background: #fff; border: 1.5px solid var(--border); border-radius: 12px;
+  padding: 14px 10px 10px; text-align: center;
+  position: relative; overflow: hidden; transition: box-shadow .15s;
+}
+.param-card::after {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  border-radius: 12px 12px 0 0;
+}
+.param-card.good::after { background: var(--success); }
+.param-card.warn::after { background: #f59e0b; }
+.param-card.bad::after  { background: var(--danger); }
+.param-card.none::after { background: var(--border); }
+.param-card:hover { box-shadow: 0 2px 10px rgba(0,0,0,.07); }
+.p-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 6px; }
+.p-value { font-size: 21px; font-weight: 800; line-height: 1; color: var(--text); letter-spacing: -0.03em; }
+.p-value.good { color: var(--success); }
+.p-value.warn { color: #d97706; }
+.p-value.bad  { color: var(--danger); }
+.p-unit  { font-size: 10px; color: var(--muted2); margin-top: 3px; font-weight: 600; }
+.p-range { font-size: 9.5px; color: var(--muted2); margin-top: 2px; }
+.p-empty { font-size: 18px; color: var(--border); font-weight: 700; }
+
+/* ── Two Cols ── */
+.two-col { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 14px; margin-bottom: 16px; }
+.card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 18px; }
+.card-title { font-size: 13px; font-weight: 800; color: var(--text); margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
+
+/* ── Log Form ── */
+.log-date-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.log-date-row label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
+.log-date-row input[type="date"] { flex: 1; padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; color: var(--text); font-weight: 600; outline: none; background: #fff; }
+.log-date-row input[type="date"]:focus { border-color: var(--accent); }
+
+/* Strip-coded input pads */
+.strip-inputs-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted2); margin-bottom: 8px; }
+.strip-inputs-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.strip-input-pad {
+  border-radius: 10px; overflow: hidden;
+  border: 1.5px dashed #c0d0dc;
+  transition: border-color .2s, box-shadow .2s, transform .15s;
+  position: relative; cursor: pointer;
+}
+.strip-input-pad:hover { transform: translateY(-2px); box-shadow: 0 5px 16px rgba(0,0,0,.10); border-style: solid; border-color: #90b0c8; }
+.strip-input-pad:focus-within { border-style: solid; box-shadow: 0 0 0 3px rgba(0,119,204,.15); }
+.strip-input-pad.has-value { border-style: solid; }
+.sip-bg {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 10px 8px 7px; cursor: pointer;
+  transition: background-color .3s ease, color .3s ease;
+  background: #f4f8fb;
+  min-height: 92px; justify-content: space-between;
+}
+.sip-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; opacity: .75; margin-bottom: 2px; color: var(--muted); transition: color .3s; }
+.sip-input {
+  background: transparent; border: none;
+  font-size: 20px; font-weight: 800; text-align: center;
+  width: 100%; outline: none; padding: 2px 4px;
+  color: var(--text); transition: color .3s; cursor: text;
+  -moz-appearance: textfield;
+}
+.sip-input::-webkit-inner-spin-button,
+.sip-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+/* "Tap to enter" hint shown when pad is empty */
+.sip-hint {
+  font-size: 10px; font-weight: 600; color: #a0b4c4;
+  display: flex; align-items: center; gap: 3px;
+  pointer-events: none; transition: opacity .2s; margin-top: 1px;
+}
+.sip-hint.hidden { display: none; }
+.sip-unit { font-size: 9px; font-weight: 600; opacity: .6; margin-top: 1px; letter-spacing: .03em; transition: color .3s; }
+/* Mini scale bar inside each strip pad */
+.sip-scalebar { display: flex; height: 4px; width: 100%; border-radius: 0 0 8px 8px; margin-top: 4px; overflow: hidden; }
+.sip-scalebar-seg { flex: 1; }
+
+/* Standard inputs (Temp, TDS) */
+.std-inputs-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted2); margin-bottom: 8px; }
+.std-inputs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.fg { display: flex; flex-direction: column; gap: 3px; }
+.fg label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.fg input {
+  padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 8px;
+  font-size: 14px; font-weight: 700; color: var(--text); outline: none;
+  background: #fff; transition: border-color .15s; width: 100%;
+}
+.fg input:focus { border-color: var(--accent); }
+.fg input::placeholder { color: #c8d8e8; font-weight: 400; }
+
+/* ── Buttons ── */
+.btn { padding: 9px 16px; border-radius: 9px; font-size: 13px; font-weight: 700; cursor: pointer; border: none; transition: all .15s; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
+.btn-full { width: 100%; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { filter: brightness(1.1); }
+.btn-t1 { background: var(--tank1); }
+.btn-t2 { background: var(--tank2); }
+.btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text); }
+.btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+.btn-sm { padding: 5px 11px; font-size: 11px; border-radius: 7px; }
+.btn-danger-sm { background: var(--danger-bg); border: 1px solid #fbb; color: var(--danger); padding: 4px 9px; font-size: 11px; border-radius: 6px; cursor: pointer; font-weight: 700; }
+.btn-danger-sm:hover { background: var(--danger); color: #fff; }
+
+/* ── Water Change ── */
+.wc-input-row { display: flex; gap: 8px; align-items: flex-end; margin-bottom: 12px; }
+.wc-list { display: flex; flex-direction: column; gap: 5px; max-height: 148px; overflow-y: auto; }
+.wc-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 11px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border-soft); font-size: 12px; }
+.wc-left { display: flex; flex-direction: column; gap: 1px; }
+.wc-date { font-weight: 700; }
+.wc-note { font-size: 10.5px; color: var(--muted); }
+.empty-msg { text-align: center; padding: 16px; color: var(--muted2); font-size: 12px; }
+
+/* ── Maintenance ── */
+.maint-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+.maint-card { background: #fff; border: 1.5px solid var(--border); border-radius: 13px; padding: 16px; transition: box-shadow .15s; }
+.maint-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,.07); }
+.mc-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.mc-title { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.mc-icon { font-size: 22px; }
+.mc-days { font-size: 32px; font-weight: 900; line-height: 1; letter-spacing: -0.04em; }
+.mc-days.ok      { color: var(--success); }
+.mc-days.soon    { color: #d97706; }
+.mc-days.overdue { color: var(--danger); }
+.mc-days.neutral { color: var(--muted2); }
+.mc-sub  { font-size: 11px; color: var(--muted); margin-bottom: 10px; margin-top: 2px; }
+.mc-last { font-size: 11px; color: var(--muted2); margin-bottom: 10px; }
+
+/* ── Chart ── */
+.chart-card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+.chart-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
+.chart-title { font-size: 13px; font-weight: 800; }
+.range-btns { display: flex; gap: 4px; }
+.rbtn { padding: 4px 11px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; border: 1.5px solid var(--border); background: transparent; color: var(--muted); transition: all .15s; }
+.rbtn.active { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
+.param-toggles { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px; }
+.ptoggle { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; cursor: pointer; border: 1.5px solid currentColor; background: transparent; transition: all .15s; opacity: .38; }
+.ptoggle.on { opacity: 1; }
+.chart-wrap { height: 200px; position: relative; }
+
+/* ── History ── */
+.hist-card { background: #fff; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; margin-bottom: 16px; }
+.hist-head-bar { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px 10px; }
+.hist-title { font-size: 13px; font-weight: 800; }
+.hist-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+.hist-table th { background: var(--bg); padding: 7px 8px; text-align: center; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.hist-table th:first-child { text-align: left; }
+.hist-table td { padding: 7px 8px; text-align: center; border-bottom: 1px solid var(--border-soft); font-weight: 600; }
+.hist-table td:first-child { text-align: left; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.hist-table tr:last-child td { border-bottom: none; }
+.hist-table tr:hover td { background: var(--bg); }
+.hist-strip-cell span { display: inline-block; padding: 2px 7px; border-radius: 5px; font-weight: 700; }
+.cv-good { color: var(--success); }
+.cv-warn { color: #d97706; }
+.cv-bad  { color: var(--danger); }
+.cv-none { color: #c0ccd8; }
+.hist-wrap { max-height: 220px; overflow-y: auto; }
+.del-row { background: none; border: none; cursor: pointer; color: var(--muted2); font-size: 14px; padding: 0 4px; transition: color .12s; }
+.del-row:hover { color: var(--danger); }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* ── Responsive ── */
+@media (max-width: 860px) {
+  .params-grid { grid-template-columns: repeat(3, 1fr); }
+  .params-grid-std { grid-template-columns: repeat(2, 1fr); }
+  .two-col { grid-template-columns: 1fr; }
+  .maint-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 540px) {
+  .params-grid { grid-template-columns: repeat(3, 1fr); }
+  .strip-inputs-grid { grid-template-columns: repeat(3, 1fr); }
+  .maint-grid { grid-template-columns: 1fr; }
+  .main { padding: 14px; }
+  .hist-table { font-size: 10.5px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="brand">
+    <div class="brand-icon">🐠</div>
+    <div>
+      <h1>Aquascape Dashboard</h1>
+      <div class="sub">Chakorn's Tanks — Thailand</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="today-date" id="todayDate"></div>
+    <div class="tank-tabs">
+      <button class="tank-tab active" data-tank="1" onclick="switchTank(1)">Tank 1 · 60cm</button>
+      <button class="tank-tab" data-tank="2" onclick="switchTank(2)">Tank 2 · 30cm</button>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="tank-bio" id="tankBio"></div>
+  <div class="alerts" id="alerts"></div>
+
+  <!-- Strip-coded param cards -->
+  <div class="params-section-label">Test Strip Parameters</div>
+  <div class="params-grid" id="paramsGrid"></div>
+
+  <!-- Standard param cards -->
+  <div class="params-section-label" style="margin-top:10px;">General Parameters</div>
+  <div class="params-grid-std" id="paramsGridStd"></div>
+
+  <!-- Two Column -->
+  <div class="two-col">
+    <!-- Log Form -->
+    <div class="card">
+      <div class="card-title"><span>📋</span> Log Parameters</div>
+      <div class="log-date-row">
+        <label>Date</label>
+        <input type="date" id="logDate">
+      </div>
+
+      <!-- Strip-coded inputs — look like test pads, live color update -->
+      <div class="strip-inputs-label">Test Strip Readings</div>
+      <div class="strip-inputs-grid" id="stripInputsGrid"></div>
+
+      <!-- Standard inputs -->
+      <div class="std-inputs-label">General Readings</div>
+      <div class="std-inputs-grid">
+        <div class="fg"><label>Temp (°C)</label><input type="number" id="inp_temp" step="0.1" min="15" max="35" placeholder="26"></div>
+        <div class="fg"><label>TDS (ppm)</label><input type="number" id="inp_tds"  step="1"   min="0" max="9999" placeholder="120"></div>
+      </div>
+
+      <button class="btn btn-primary btn-full" id="logBtn" onclick="logParams()">Save Parameters</button>
+    </div>
+
+    <!-- Water Change & Filter -->
+    <div class="card">
+      <div class="card-title"><span>💧</span> Water Change Log</div>
+      <div class="wc-input-row">
+        <div class="fg" style="flex:1.2"><label>Date</label><input type="date" id="wcDate"></div>
+        <div class="fg" style="flex:0.8">
+          <label>% Changed</label>
+          <input type="number" id="wcPct" min="1" max="100" placeholder="40" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-weight:700;outline:none;width:100%;">
+        </div>
+        <button class="btn btn-outline btn-sm" style="white-space:nowrap;margin-top:1px;" onclick="logWaterChange()">+ Log</button>
+      </div>
+      <div class="wc-list" id="wcList"></div>
+      <div style="margin-top:10px;border-top:1px solid var(--border-soft);padding-top:10px;">
+        <div class="card-title" style="margin-bottom:8px;"><span>🔧</span> Filter Cleaned</div>
+        <button class="btn btn-outline btn-full btn-sm" onclick="logFilterClean()">✓ Mark Filter Clean Today</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Maintenance -->
+  <div class="maint-grid" id="maintGrid"></div>
+
+  <!-- Chart -->
+  <div class="chart-card">
+    <div class="chart-head">
+      <div class="chart-title">📈 Parameter Trends</div>
+      <div class="range-btns">
+        <button class="rbtn active" onclick="setRange(7,this)">7d</button>
+        <button class="rbtn" onclick="setRange(14,this)">14d</button>
+        <button class="rbtn" onclick="setRange(30,this)">30d</button>
+      </div>
+    </div>
+    <div class="param-toggles" id="paramToggles"></div>
+    <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+  </div>
+
+  <!-- History -->
+  <div class="hist-card">
+    <div class="hist-head-bar"><div class="hist-title">📅 Parameter History</div></div>
+    <div class="hist-wrap">
+      <table class="hist-table">
+        <thead><tr id="histHead"></tr></thead>
+        <tbody id="histBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Tank Config ─────────────────────────────────────────────────────────
+const TANKS = {
+  1: {
+    name:'60cm Iwagumi', color:'#0077cc',
+    chips:['ADA Amazonia V2','Netlea No.2SP','Chihiros A2','10 Albino Neon · 10 Ruby Tetra · 4 Pseudomugil · 6 Fire Shrimp','CO₂ 3kg'],
+    waterChangeFreqDays:7, filterCleanFreqDays:30,
+    targets:{ no3:'<10', no2:'≈0', cl2:'0', gh:'75–150', kh:'40–120', ph:'6.5–6.8', temp:'25–27°C', tds:'80–200' }
+  },
+  2: {
+    name:'30cm Planted', color:'#6c3bcd',
+    chips:['ADA Amazonia V2 partial','Sunsun XBL 400','YIKEDA 15.2W','Dragon Stone · Pink Sand','CO₂ diffuser'],
+    waterChangeFreqDays:7, filterCleanFreqDays:21,
+    targets:{ no3:'<10', no2:'≈0', cl2:'0', gh:'75–150', kh:'40–120', ph:'6.5–6.8', temp:'25–27°C', tds:'80–200' }
+  }
+};
+
+// ─── Parameter Config ────────────────────────────────────────────────────
+// Strip-coded params: actual test-pad color as background
+// Standard params: white card + coloured top border
+const STRIP_PARAMS = [
+  { key:'no3', label:'NO₃', unit:'mg/L', color:'#e85c8a', decimals:0,
+    good:[0,10], warn:[10,50], range:'<10',
+    // Nitrate: white → light pink → deeper pink → dark pink-red (from strip image)
+    stripScale:[[0,'#FFF2F4'],[10,'#FDDADA'],[25,'#F5AABA'],[50,'#EE8080'],[100,'#D03040'],[250,'#900020']]
+  },
+  { key:'no2', label:'NO₂', unit:'mg/L', color:'#e85c8a', decimals:2,
+    good:[0,0.5], warn:[0.5,2], range:'≈0',
+    // Nitrite: white → very light pink → light pink → medium pink (strip image)
+    stripScale:[[0,'#FFF2F4'],[1,'#FFCCD8'],[5,'#F090A0'],[10,'#D03050']]
+  },
+  { key:'cl2', label:'Cl₂', unit:'mg/L', color:'#d06090', decimals:1,
+    good:[0,0.2], warn:[0.2,0.8], range:'0',
+    // Chlorine: very pale pink → light pink → medium pink (from strip image — lighter than NO₂)
+    stripScale:[[0,'#FFF6F8'],[0.8,'#FFE0E8'],[1.5,'#F8C0CC'],[3.0,'#EE9090']]
+  },
+  { key:'gh', label:'GH', unit:'mg/L', color:'#7c52d4', decimals:0,
+    good:[75,150], warn:[25,200], range:'75–150',
+    // Total Hardness: white → pale lavender → light purple → medium purple → dark purple (from strip)
+    stripScale:[[0,'#F6F4FF'],[25,'#E8E0FF'],[75,'#C8B0F0'],[150,'#9870D0'],[300,'#5828A0']]
+  },
+  { key:'kh', label:'KH', unit:'mg/L', color:'#1a9e60', decimals:0,
+    good:[40,120], warn:[40,180], range:'40–120',
+    // Carbonate: white → very light green → light green → medium green → dark green (from strip)
+    stripScale:[[0,'#F2FFF5'],[40,'#C8F0D4'],[80,'#80CC90'],[120,'#40A858'],[180,'#187830'],[300,'#084820']]
+  },
+  { key:'ph', label:'pH', unit:'', color:'#f97316', decimals:2,
+    good:[6.5,6.8], warn:[6.3,7.1], range:'6.5–6.8',
+    // pH: yellow → orange → deep orange → orange-red → red → dark red (from strip)
+    stripScale:[[6.4,'#F5C000'],[6.8,'#F08000'],[7.2,'#E06000'],[7.6,'#CC3A00'],[8.0,'#B01800'],[8.4,'#800000']]
+  },
+];
+
+const STD_PARAMS = [
+  { key:'temp', label:'Temp', unit:'°C', color:'#f97316', decimals:1, good:[25,27], warn:[24,28.5], range:'25–27' },
+  { key:'tds',  label:'TDS',  unit:'ppm',color:'#8b5cf6', decimals:0, good:[80,200],warn:[50,300],  range:'80–200' },
+];
+
+const ALL_PARAMS = [...STRIP_PARAMS, ...STD_PARAMS];
+
+// ─── Color Helpers ───────────────────────────────────────────────────────
+function hexToRgb(hex) {
+  return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
+}
+function rgbToHex(r,g,b) {
+  return '#'+[r,g,b].map(v=>Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,'0')).join('');
+}
+function lerp(a,b,t) { return a+(b-a)*t; }
+function interpolateColor(c1,c2,t) {
+  const [r1,g1,b1]=hexToRgb(c1), [r2,g2,b2]=hexToRgb(c2);
+  return rgbToHex(lerp(r1,r2,t), lerp(g1,g2,t), lerp(b1,b2,t));
+}
+function getStripColor(param, value) {
+  if (!param.stripScale || value===null || value===undefined || value==='') return null;
+  const v = parseFloat(value); if(isNaN(v)) return null;
+  const s = param.stripScale;
+  if (v <= s[0][0]) return s[0][1];
+  if (v >= s[s.length-1][0]) return s[s.length-1][1];
+  for (let i=0; i<s.length-1; i++) {
+    if (v >= s[i][0] && v <= s[i+1][0]) {
+      const t = (v-s[i][0])/(s[i+1][0]-s[i][0]);
+      return interpolateColor(s[i][1], s[i+1][1], t);
+    }
+  }
+  return s[0][1];
+}
+function luminance(hex) {
+  const [r,g,b]=hexToRgb(hex);
+  return (0.299*r+0.587*g+0.114*b)/255;
+}
+function textOn(bg) { return (!bg||luminance(bg)>0.56)?'#1a2332':'#ffffff'; }
+function borderFor(bg) {
+  if (!bg) return '#d8e8f2';
+  const [r,g,b]=hexToRgb(bg);
+  return rgbToHex(r*.80,g*.80,b*.80);
+}
+
+// ─── Status (standard params) ────────────────────────────────────────────
+function getStatus(key, val) {
+  if (val===null||val===undefined||val==='') return 'none';
+  const v=parseFloat(val); if(isNaN(v)) return 'none';
+  const p=ALL_PARAMS.find(x=>x.key===key); if(!p) return 'none';
+  if (v>=p.good[0] && v<=p.good[1]) return 'good';
+  if (v>=p.warn[0] && v<=p.warn[1]) return 'warn';
+  return 'bad';
+}
+
+// ─── State ──────────────────────────────────────────────────────────────
+let currentTank = parseInt(localStorage.getItem('aq_current_tank')||'1');
+let chartDays = 7;
+let activeParams = new Set(ALL_PARAMS.map(p=>p.key));
+let trendChart = null;
+
+function getData(t,k){ return JSON.parse(localStorage.getItem(`aq_t${t}_${k}`)||'[]'); }
+function setData(t,k,d){ localStorage.setItem(`aq_t${t}_${k}`,JSON.stringify(d)); }
+
+// ─── Date Helpers ─────────────────────────────────────────────────────────
+function todayStr(){
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function fmtDate(s){
+  if(!s) return '—';
+  const [y,m,d]=s.split('-');
+  const mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${d} ${mo[parseInt(m)-1]} ${y}`;
+}
+function daysSince(ds){
+  if(!ds) return null;
+  return Math.round((new Date(todayStr())-new Date(ds))/86400000);
+}
+
+// ─── Build strip-input grid ───────────────────────────────────────────────
+function buildStripInputs() {
+  const grid = document.getElementById('stripInputsGrid');
+  grid.innerHTML = STRIP_PARAMS.map(p => {
+    const scaleBar = p.stripScale.map(([,c]) =>
+      `<div class="sip-scalebar-seg" style="background:${c}"></div>`).join('');
+    return `
+      <div class="strip-input-pad" id="sip_${p.key}"
+        onclick="document.getElementById('inp_${p.key}').focus()">
+        <div class="sip-bg" id="sipbg_${p.key}">
+          <div class="sip-label" id="sipl_${p.key}">${p.label}</div>
+          <input class="sip-input" id="inp_${p.key}" type="number"
+            step="${p.decimals>0?'0.'+('0'.repeat(p.decimals-1))+'1':'1'}"
+            min="0"
+            oninput="liveColorInput('${p.key}',this)">
+          <div class="sip-hint" id="siph_${p.key}">✎ tap to enter</div>
+          <div class="sip-unit" id="sipu_${p.key}">${p.unit||'—'}</div>
+          <div class="sip-scalebar">${scaleBar}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function liveColorInput(key, inputEl) {
+  const p = STRIP_PARAMS.find(x=>x.key===key); if(!p) return;
+  const hasVal = inputEl.value.trim() !== '';
+  const bg = hasVal ? getStripColor(p, inputEl.value) : null;
+  const bgColor = bg || '#f4f8fb';
+  const tc = bg ? textOn(bg) : null;
+  const bc = bg ? borderFor(bg) : '';
+
+  const bgEl  = document.getElementById(`sipbg_${key}`);
+  const lbEl  = document.getElementById(`sipl_${key}`);
+  const utEl  = document.getElementById(`sipu_${key}`);
+  const padEl = document.getElementById(`sip_${key}`);
+  const hintEl= document.getElementById(`siph_${key}`);
+
+  bgEl.style.backgroundColor = bgColor;
+  inputEl.style.color  = tc || 'var(--text)';
+  lbEl.style.color     = tc || 'var(--muted)';
+  utEl.style.color     = tc || '';
+  padEl.style.borderColor = bc;
+
+  // Show/hide hint and has-value class
+  if (hasVal) {
+    hintEl.classList.add('hidden');
+    padEl.classList.add('has-value');
+  } else {
+    hintEl.classList.remove('hidden');
+    padEl.classList.remove('has-value');
+  }
+}
+
+function resetStripInputs() {
+  STRIP_PARAMS.forEach(p => {
+    const el = document.getElementById(`inp_${p.key}`);
+    if(el) { el.value=''; liveColorInput(p.key, el); }
+  });
+}
+
+// ─── Switch Tank ─────────────────────────────────────────────────────────
+function switchTank(t){
+  currentTank=t;
+  localStorage.setItem('aq_current_tank',t);
+  document.querySelectorAll('.tank-tab').forEach(el=>
+    el.classList.toggle('active',parseInt(el.dataset.tank)===t));
+  document.getElementById('logBtn').className=`btn btn-primary btn-full btn-t${t}`;
+  render();
+}
+
+// ─── Log Params ──────────────────────────────────────────────────────────
+function logParams(){
+  const date=document.getElementById('logDate').value;
+  if(!date){ alert('Please select a date.'); return; }
+  const entry={date};
+  ALL_PARAMS.forEach(p=>{
+    const v=document.getElementById(`inp_${p.key}`).value.trim();
+    entry[p.key]=v===''?null:parseFloat(v);
+  });
+  const logs=getData(currentTank,'params');
+  const idx=logs.findIndex(l=>l.date===date);
+  if(idx>=0){
+    if(!confirm(`Replace entry for ${fmtDate(date)}?`)) return;
+    logs[idx]=entry;
+  } else {
+    logs.push(entry);
+    logs.sort((a,b)=>b.date.localeCompare(a.date));
+  }
+  setData(currentTank,'params',logs);
+  resetStripInputs();
+  ['temp','tds'].forEach(k=>{ const el=document.getElementById(`inp_${k}`); if(el) el.value=''; });
+  render();
+}
+function deleteParamEntry(date){
+  if(!confirm(`Delete entry for ${fmtDate(date)}?`)) return;
+  setData(currentTank,'params',getData(currentTank,'params').filter(l=>l.date!==date));
+  render();
+}
+
+// ─── Water Change ─────────────────────────────────────────────────────────
+function logWaterChange(){
+  const date=document.getElementById('wcDate').value;
+  if(!date){ alert('Please select a date.'); return; }
+  const pct=document.getElementById('wcPct').value;
+  const wcs=getData(currentTank,'wc');
+  wcs.push({date,pct:pct||null});
+  wcs.sort((a,b)=>b.date.localeCompare(a.date));
+  setData(currentTank,'wc',wcs);
+  document.getElementById('wcPct').value='';
+  render();
+}
+function deleteWC(i){
+  const wcs=getData(currentTank,'wc'); wcs.splice(i,1);
+  setData(currentTank,'wc',wcs); render();
+}
+function logFilterClean(){
+  const cleans=getData(currentTank,'filter'), today=todayStr();
+  if(!cleans.includes(today)){ cleans.push(today); cleans.sort((a,b)=>b.localeCompare(a)); }
+  setData(currentTank,'filter',cleans); render();
+}
+
+// ─── Render ──────────────────────────────────────────────────────────────
+function render(){
+  renderBio();
+  renderParams();
+  renderAlerts();
+  renderWCList();
+  renderMaintenance();
+  renderChart();
+  renderHistory();
+}
+
+function renderBio(){
+  const t=TANKS[currentTank];
+  document.getElementById('tankBio').innerHTML=`
+    <div class="tank-bio-name"><span style="background:${t.color}"></span>${t.name}</div>
+    <div class="bio-chips">${t.chips.map(c=>`<span class="bio-chip">${c}</span>`).join('')}</div>
+    <div style="margin-left:auto;font-size:11px;color:var(--muted)">
+      ${Object.entries(t.targets).map(([k,v])=>`<b>${k.toUpperCase()}</b> ${v}`).join(' · ')}
+    </div>`;
+}
+
+function renderParams(){
+  const logs=getData(currentTank,'params');
+  const latest=logs[0]||{};
+
+  // Strip cards
+  document.getElementById('paramsGrid').innerHTML=STRIP_PARAMS.map(p=>{
+    const val=latest[p.key];
+    const hasVal=val!==null&&val!==undefined;
+    const display=hasVal?parseFloat(val).toFixed(p.decimals):null;
+    const bg=hasVal?getStripColor(p,val):'#f4f8fb';
+    const tc=bg?textOn(bg):'#ccc';
+    const bc=hasVal?borderFor(bg):'#d8e8f2';
+    const scaleBar=p.stripScale.map(([,c])=>`<div class="strip-scale-seg" style="background:${c}"></div>`).join('');
+    return `
+      <div class="param-card-strip" style="border-color:${bc}">
+        <div class="strip-color-bg" style="background:${bg}">
+          <div class="strip-label" style="color:${tc}">${p.label}</div>
+          ${display!==null
+            ?`<div class="strip-value" style="color:${tc}">${display}</div>
+              <div class="strip-unit" style="color:${tc}">${p.unit||'—'}</div>`
+            :`<div class="strip-empty" style="color:${tc}">—</div>`}
+          <div class="strip-range" style="color:${tc}">${p.range}</div>
+        </div>
+        <div class="strip-scale-bar">${scaleBar}</div>
+      </div>`;
+  }).join('');
+
+  // Standard cards
+  document.getElementById('paramsGridStd').innerHTML=STD_PARAMS.map(p=>{
+    const val=latest[p.key];
+    const st=getStatus(p.key,val);
+    const display=(val!==null&&val!==undefined)?parseFloat(val).toFixed(p.decimals):null;
+    return `
+      <div class="param-card ${st}">
+        <div class="p-label">${p.label}</div>
+        ${display!==null
+          ?`<div class="p-value ${st}">${display}</div><div class="p-unit">${p.unit||'—'}</div>`
+          :`<div class="p-empty">—</div>`}
+        <div class="p-range">${p.range}</div>
+      </div>`;
+  }).join('');
+}
+
+function renderAlerts(){
+  const logs=getData(currentTank,'params');
+  const wcs=getData(currentTank,'wc');
+  const cleans=getData(currentTank,'filter');
+  const t=TANKS[currentTank];
+  const latest=logs[0]||{};
+  const alerts=[];
+
+  ALL_PARAMS.forEach(p=>{
+    const st=getStatus(p.key,latest[p.key]);
+    if(st==='bad')
+      alerts.push({type:'danger',msg:`${p.label} is ${parseFloat(latest[p.key]).toFixed(p.decimals)}${p.unit} — outside safe range (target: ${p.range})`,icon:'⚠️'});
+    else if(st==='warn')
+      alerts.push({type:'warning',msg:`${p.label} is ${parseFloat(latest[p.key]).toFixed(p.decimals)}${p.unit} — slightly off target (${p.range})`,icon:'⚡'});
+  });
+
+  const lastWC=wcs[0]?.date, wcDays=daysSince(lastWC);
+  if(wcDays===null)
+    alerts.push({type:'warning',msg:'No water change logged yet — log your first one below.',icon:'💧'});
+  else if(wcDays>t.waterChangeFreqDays)
+    alerts.push({type:'danger',msg:`Water change overdue — last done ${wcDays}d ago (target: every ${t.waterChangeFreqDays}d).`,icon:'💧'});
+  else if(wcDays>=t.waterChangeFreqDays-1)
+    alerts.push({type:'warning',msg:`Water change due soon — last done ${wcDays}d ago.`,icon:'💧'});
+
+  const filterDays=daysSince(cleans[0]);
+  if(filterDays!==null&&filterDays>t.filterCleanFreqDays)
+    alerts.push({type:'warning',msg:`Filter clean overdue — last done ${filterDays}d ago.`,icon:'🔧'});
+
+  if(!logs.length)
+    alerts.push({type:'success',msg:'Welcome! Log your first water parameters above to get started.',icon:'🌱'});
+
+  document.getElementById('alerts').innerHTML=alerts.map(a=>
+    `<div class="alert alert-${a.type}"><span>${a.icon}</span>${a.msg}</div>`).join('');
+}
+
+function renderWCList(){
+  const wcs=getData(currentTank,'wc');
+  const el=document.getElementById('wcList');
+  if(!wcs.length){ el.innerHTML='<div class="empty-msg">No water changes logged yet</div>'; return; }
+  el.innerHTML=wcs.slice(0,10).map((w,i)=>`
+    <div class="wc-item">
+      <div class="wc-left">
+        <div class="wc-date">${fmtDate(w.date)}</div>
+        ${w.pct?`<div class="wc-note">${w.pct}% changed</div>`:''}
+      </div>
+      <button class="btn-danger-sm" onclick="deleteWC(${i})">✕</button>
+    </div>`).join('');
+}
+
+function renderMaintenance(){
+  const wcs=getData(currentTank,'wc'), cleans=getData(currentTank,'filter'), logs=getData(currentTank,'params');
+  const t=TANKS[currentTank];
+  const lastWC=wcs[0]?.date, wcDays=daysSince(lastWC), wcDue=wcDays===null?null:t.waterChangeFreqDays-wcDays;
+  const lastFilter=cleans[0], filterDays=daysSince(lastFilter), filterDue=filterDays===null?null:t.filterCleanFreqDays-filterDays;
+  const lastLog=logs[0]?.date, logDays=daysSince(lastLog);
+  const cls=d=>d===null?'neutral':d<0?'overdue':d<=1?'soon':'ok';
+  const disp=d=>d===null?'?':d<0?`${Math.abs(d)}d late`:d===0?'Today':`${d}d`;
+
+  document.getElementById('maintGrid').innerHTML=`
+    <div class="maint-card">
+      <div class="mc-head"><div class="mc-title">Water Change</div><div class="mc-icon">💧</div></div>
+      <div class="mc-days ${cls(wcDue)}">${disp(wcDue)}</div>
+      <div class="mc-sub">Every ${t.waterChangeFreqDays} days</div>
+      <div class="mc-last">Last: ${lastWC?fmtDate(lastWC)+` (${wcDays}d ago)`:'Never logged'}</div>
+      <button class="btn btn-outline btn-full btn-sm" onclick="document.getElementById('wcDate').value=todayStr();document.getElementById('wcPct').value=40;">+ Log Water Change</button>
+    </div>
+    <div class="maint-card">
+      <div class="mc-head"><div class="mc-title">Filter Clean</div><div class="mc-icon">🔧</div></div>
+      <div class="mc-days ${cls(filterDue)}">${disp(filterDue)}</div>
+      <div class="mc-sub">Every ${t.filterCleanFreqDays} days</div>
+      <div class="mc-last">Last: ${lastFilter?fmtDate(lastFilter)+` (${filterDays}d ago)`:'Never logged'}</div>
+      <button class="btn btn-outline btn-full btn-sm" onclick="logFilterClean()">✓ Mark Clean Today</button>
+    </div>
+    <div class="maint-card">
+      <div class="mc-head"><div class="mc-title">Last Log</div><div class="mc-icon">📋</div></div>
+      <div class="mc-days ${logDays===null?'neutral':logDays===0?'ok':logDays<=2?'ok':logDays<=4?'soon':'overdue'}">
+        ${logDays===null?'?':logDays===0?'Today':`${logDays}d ago`}
+      </div>
+      <div class="mc-sub">Log daily for best tracking</div>
+      <div class="mc-last">Last: ${lastLog?fmtDate(lastLog):'Never'}</div>
+      <button class="btn btn-outline btn-full btn-sm" onclick="document.getElementById('logDate').value=todayStr();document.getElementById('inp_no3').focus();">+ Log Today</button>
+    </div>`;
+}
+
+// ─── Chart ───────────────────────────────────────────────────────────────
+function setRange(days,btn){
+  chartDays=days;
+  document.querySelectorAll('.rbtn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderChart();
+}
+function renderParamToggles(){
+  document.getElementById('paramToggles').innerHTML=ALL_PARAMS.map(p=>`
+    <button class="ptoggle on" data-key="${p.key}"
+      style="color:${p.color};border-color:${p.color};background:${p.color}22"
+      onclick="toggleParam('${p.key}',this)">${p.label}</button>`).join('');
+}
+function toggleParam(key,btn){
+  const p=ALL_PARAMS.find(x=>x.key===key);
+  if(activeParams.has(key)){
+    activeParams.delete(key); btn.classList.remove('on'); btn.style.background='transparent';
+  } else {
+    activeParams.add(key); btn.classList.add('on'); btn.style.background=p.color+'22';
+  }
+  if(trendChart){
+    ALL_PARAMS.forEach((p,i)=>{ trendChart.data.datasets[i].hidden=!activeParams.has(p.key); });
+    trendChart.update();
+  }
+}
+function renderChart(){
+  const logs=getData(currentTank,'params');
+  const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-chartDays);
+  const cutoffStr=cutoff.toISOString().slice(0,10);
+  const filtered=logs.filter(l=>l.date>=cutoffStr).reverse();
+  const labels=filtered.map(l=>fmtDate(l.date));
+  if(trendChart){ trendChart.destroy(); trendChart=null; }
+  const ctx=document.getElementById('trendChart').getContext('2d');
+  trendChart=new Chart(ctx,{
+    type:'line',
+    data:{
+      labels,
+      datasets:ALL_PARAMS.map(p=>({
+        label:`${p.label}${p.unit?' ('+p.unit+')':''}`,
+        data:filtered.map(l=>l[p.key]!==null&&l[p.key]!==undefined?parseFloat(l[p.key]):null),
+        borderColor:p.color, backgroundColor:p.color+'18',
+        borderWidth:2, pointRadius:4, pointHoverRadius:6,
+        tension:0.35, fill:false, spanGaps:true,
+        hidden:!activeParams.has(p.key),
+      }))
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          backgroundColor:'#fff', borderColor:'#d8e8f2', borderWidth:1,
+          titleColor:'#0f1f2e', bodyColor:'#607080', padding:10,
+          callbacks:{
+            label:ctx=>{
+              if(ctx.parsed.y===null) return null;
+              const p=ALL_PARAMS[ctx.datasetIndex];
+              return ` ${p.label}: ${ctx.parsed.y.toFixed(p.decimals)}${p.unit}`;
+            }
+          }
+        }
+      },
+      scales:{
+        x:{grid:{color:'#e8f2f8'},ticks:{color:'#8fa0b0',font:{size:11},maxRotation:0}},
+        y:{grid:{color:'#e8f2f8'},ticks:{color:'#8fa0b0',font:{size:11}}}
+      }
+    }
+  });
+}
+
+// ─── History ─────────────────────────────────────────────────────────────
+function renderHistory(){
+  const logs=getData(currentTank,'params');
+  // Header
+  document.getElementById('histHead').innerHTML=
+    '<th>Date</th>'+ALL_PARAMS.map(p=>`<th>${p.label}</th>`).join('')+'<th></th>';
+
+  const tbody=document.getElementById('histBody');
+  if(!logs.length){
+    tbody.innerHTML=`<tr><td colspan="${ALL_PARAMS.length+2}" style="text-align:center;padding:20px;color:var(--muted2);font-size:12px;">No entries yet — log your first parameters above</td></tr>`;
+    return;
+  }
+  tbody.innerHTML=logs.map(l=>{
+    const cells=ALL_PARAMS.map(p=>{
+      const val=l[p.key];
+      if(p.stripScale){
+        const bg=getStripColor(p,val);
+        const hasVal=val!==null&&val!==undefined;
+        const display=hasVal?parseFloat(val).toFixed(p.decimals):'—';
+        const tc=bg?textOn(bg):'#c0ccd8';
+        return `<td class="hist-strip-cell"><span style="${bg?`background:${bg};color:${tc}`:'color:#c0ccd8'}">${display}</span></td>`;
+      } else {
+        const st=getStatus(p.key,val);
+        const display=(val!==null&&val!==undefined)?parseFloat(val).toFixed(p.decimals):'—';
+        return `<td class="cv-${st}">${display}</td>`;
+      }
+    }).join('');
+    return `<tr><td>${fmtDate(l.date)}</td>${cells}<td><button class="del-row" onclick="deleteParamEntry('${l.date}')">✕</button></td></tr>`;
+  }).join('');
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────
+function init(){
+  const d=new Date();
+  const mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const dy=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  document.getElementById('todayDate').textContent=
+    `${dy[d.getDay()]}, ${d.getDate()} ${mo[d.getMonth()]} ${d.getFullYear()}`;
+  document.getElementById('logDate').value=todayStr();
+  document.getElementById('wcDate').value=todayStr();
+  document.getElementById('logBtn').className=`btn btn-primary btn-full btn-t${currentTank}`;
+  document.querySelectorAll('.tank-tab').forEach(el=>
+    el.classList.toggle('active',parseInt(el.dataset.tank)===currentTank));
+  buildStripInputs();
+  renderParamToggles();
+  render();
+}
+
+document.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>
